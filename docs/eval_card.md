@@ -20,3 +20,13 @@ Card này đi kèm mỗi báo cáo và được dùng lại ở Day 10.
 - **Phạm vi pilot:** Xử lý yêu cầu hoàn phí ship / bồi thường hàng hỏng LogiX-VN trên dữ liệu giả lập `public_claims.jsonl`.
 - **Giới hạn / bằng chứng còn thiếu:** `MockLLM`, 14 item (CI rộng, chỉ bắt được hồi quy lớn), `judge replay` trên CSV công khai; không đo trên người dùng thật.
 - **Khi nào tăng eval-set version:** Khi bổ sung item mới (ví dụ adversarial pack v2 hoặc case mới từ trace production) hoặc thay đổi nhãn chuẩn.
+
+## Bổ sung v2 (M5–M7)
+- **Run ID / eval set v2 SHA:** `E-swarm-20261118-9d52` / `9d52890e4611` (28 item × 5 seed, gồm 14 item v1 + 14 item adversarial pack).
+- **Ngưỡng chọn từ A/A (`--aa 66,77,88,99,110`):** Trên `MockLLM`, A/A cho `Δ = +0.0000` ở mọi metric (`pass_hat_5 = 0.8929`). Với LLM thật, dải nhiễu sẽ `> 0` do tính ngẫu nhiên của mô hình nên ngưỡng `min` (chọn `pass_hat_5 >= 0.85`, blocking) phải nằm ngoài dải nhiễu A/A để không chặn nhầm PR trung thực.
+- **Slice gate & phát hiện lỗi:**
+  - `slice:money_movement` (`min: 0.90, no_significant_drop: true, blocking: true`): chặn được `slice_regression` (lỗi `sum_parts` trên seed lẻ ở các claim hoàn tiền mà trung bình chung `pass_rate = 0.9357` vẫn trên sàn 0.85).
+  - `slice:adversarial` (`min: 0.85, no_significant_drop: true, blocking: true`) và `slice:denial` (`min: 0.90, no_significant_drop: true, blocking: true`): chặn suy giảm ở nhóm tấn công và từ chối.
+  - `pass_hat_5` (`min: 0.85, blocking: true`): chặn `flaky_regression` (lỗi làm tròn 1/5 seed).
+- **Giới hạn cỡ mẫu:** Một bug hiếm chỉ xuất hiện ở `1/3` seed (`rare`) **không** phát hiện ổn định được với 5 seed; giữ nguyên ngưỡng theo A/A thay vì hạ ngưỡng để ép bắt lỗi hiếm.
+- **Chống gian lận eval (`integrity_check`):** Chặn đủ 4 trap công khai (`evaluator_errors_as_nan`, `dropped_failing_rows`, `cherry_picked_seeds`, `loosened_spec` qua ratchet `--base-spec`) cùng trùng lặp dòng và `evaluator_failures`. Scorecard `lab9.mutation`: `3/3` regression bị chặn, `0` báo nhầm (`fixed`, `honest_refactor` merge).
